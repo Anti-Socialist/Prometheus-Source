@@ -1,0 +1,136 @@
+name: Nightly Build
+
+on:
+  schedule:
+    # cronjob that triggers every day at 2PM UTC
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  build_nightly:
+    runs-on: windows-latest
+    name: Build Nightly
+    outputs:
+      full_sha: ${{ steps.var.outputs.full_sha }}
+      short_sha: ${{ steps.var.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Check CMake version
+        run: cmake --version
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1
+
+      - name: Generate CMake project
+        run: cmake -S. -Bbuild -G "Visual Studio 17 2022" -DCMAKE_CONFIGURATION_TYPES=Release 
+
+      - name: Build 64bit release DLL
+        run: cmake --build build --config Release --target ALL_BUILD
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: binary
+          path: build/Release/prometheus.dll
+
+      - name: Generate Build Info
+        id: var
+        run: |
+          echo "full_sha=$(git rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+  check_detections:
+    runs-on: ubuntu-latest
+    name: Check for detections in Binary and notify if necesarry
+    needs: build_nightly
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: binary
+
+      - name: Test file for detected bits
+        id: detections
+        uses: yimura/gtav-sigscan-action@v0.0.3
+        with:
+          file: ./prometheus.dll
+
+      - name: Notify on Discord
+        if: ${{ steps.detections.outputs.is_detected == 'true' }}
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          embed-title: prometheus has been detected by the sigscanner!
+          embed-description: |
+            The following bits have been detected:
+            ```yml
+            ${{ steps.detections.outputs.detected_string }}
+            ```
+  check_date:
+    runs-on: ubuntu-latest
+    name: Check latest commit
+    needs: build_nightly
+    outputs:
+      should_run: ${{ steps.should_run.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - id: should_run
+        continue-on-error: true
+        name: Check if latest commit date is within the previous 24 hours
+        if: ${{ github.event_name == 'schedule' }}
+        run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "should_run=false" >> $GITHUB_OUTPUT
+
+  create_release:
+    runs-on: ubuntu-latest
+    name: Create Release
+    needs: [ check_date, build_nightly ]
+    if: ${{ needs.check_date.outputs.should_run != 'false' }}
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: binary
+
+      - name: Echo build sha256
+        id: build_sha
+        run: |
+          sha256sum prometheus.dll > sha256.checksum
+          echo "build_sha=$(cat sha256.checksum)" >> $GITHUB_OUTPUT
+          cat sha256.checksum
+      - name: Remove previous Nightly
+        uses: dev-drprasad/delete-tag-and-release@v0.2.0
+        with:
+          delete_release: true
+          tag_name: nightly
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Nightly Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Nightly [${{ needs.build_nightly.outputs.short_sha }}]
+          tag_name: nightly
+          body: |
+            **This release has been build by Github Actions**
+            [Link to build](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            Build SHA256:
+            ```
+            ${{ steps.build_sha.outputs.build_sha }}
+            ```
+            To verify the build SHA256 during the action, click the build link, go-to "Create Release", open the Echo build sha256 step and read the sha256.
+            Compare this build hash with one that you generated yourself from the build artifacts.
+            Alternatively you can download the build artifacts, generate a SHA256 checksum and compare it with the below binary.
+            Build artifacts ARE NOT automatically the same as release assets since release assets can be modified afterwards.
+            These are nightly builds of prometheus, they are provided for testing purposes only:
+            - Test if your build environment produces a broken BigBaseV2.dll
+            - Test if source code is out of date and no longer compatible with the current version of GTA V
+            If you wish to use this menu as-is you are on your own, no warranty is provided.
+            Full Commit Hash:
+            ```
+            ${{ needs.build_nightly.outputs.full_sha }}
+            ```
+          files: |
+            prometheus.dll

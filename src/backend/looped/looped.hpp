@@ -1,0 +1,105 @@
+#pragma once
+
+#include "common.hpp"
+
+#include "services/players/player_service.hpp"
+
+namespace big
+{
+	struct spawned_ped
+	{
+		Ped ped_handle;
+		Player spawned_for_player;
+		bool is_bodyguard;
+		bool is_attacker;
+	};
+
+	inline std::vector<spawned_ped> spawned_peds;
+
+	class looped
+	{
+	public:
+		static void hud_transition_state();
+
+		static void player_good_options();
+		static void player_toxic_options();
+		static void player_spectate();
+		static void player_remote_control_vehicle();
+
+		static void self_godmode();
+		static void self_police();
+		static void self_hud();
+		static void self_dance_mode();
+		static void money_drop();
+		static void money_gun();
+		static void collectable_drop();
+		static void collectable_gun();
+		static void money_loop();
+		static void nightclub_loop();
+		static void water_loop();
+		static void fire_loop();
+		static void hand_trail_green();
+		static void hand_trail_blue();
+		static void hand_trail_midnight();
+		static void hand_trail_magenta();
+		static void container_rider();
+		static void walk_on_water();
+		static void magnet_gun();
+		static void flying_axe();
+
+		static void session_local_time();
+		static void session_pop_multiplier_areas();
+		static void session_force_thunder();
+		static void session_randomize_ceo_colors();
+		static void session_auto_kick_host();
+		static void delete_vehicles();
+		static void burst_vehicle_tires();
+		static void launch_vehicle();
+		static void horn_vehicles();
+		static void repair_vehicles();
+		static void upgrade_vehicles();
+		static void explode_peds();
+		static void rain_rockets();
+		static void asteroid_shower();
+		static void session_block_jobs();
+
+		static void system_self_globals();
+		static void system_update_pointers();
+		static void system_desync_kick_protection();
+		static void system_spoofing();
+		static void system_mission_creator();
+		static void system_auto_tp();
+
+		static void anti_cheat();
+
+		static void vehicle_auto_drive();
+		static void vehicle_boost_behavior();
+		static void vehicle_fly();
+		static void vehicle_god_mode();
+		static void vehicle_ls_customs();
+		static void vehicle_rainbow_paint();
+		static void vehicle_speedo_meter();
+		static void vehicle_turn_signals();
+		static void vehicle_trail();
+		static void vehicle_uniweap();
+		static void vehicle_invisible();
+		static void drift_mode();
+
+		static void weapons_ammo_special_type();
+		static void weapons_cage_gun();
+		static void custom_gun_disable_control_action();
+		static void weapons_delete_gun();
+		static void weapons_gravity_gun();
+		static void weapons_increased_damage();
+		static void weapons_repair_gun();
+		static void weapons_steal_vehicle_gun();
+		static void weapons_vehicle_gun();
+		static void flame_thrower();
+		static void fly_gun();
+		static void paint_gun();
+		static void rope_gun();
+		static void valkery_gun();
+
+		static void world_spawn_ped();
+	};
+}
